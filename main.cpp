@@ -4,13 +4,18 @@
 #include <cstdlib>
 #include "suffixtree.h"
 
-int main()
+int main(int argc, char *argv[])
 {
-    try
+    if (argc < 3)
+	{
+		printf ("Launch parameters: ./substrings [input_file] [output_file]");
+		return 0;
+	}
+	try
     {
         SuffixTree::GeneralizedSuffixTree suffix_tree;
-        suffix_tree.BuildSuffixTreeFromFile ("input.txt");
-        suffix_tree.DumpCommonStringsToFile ("output.txt");
+        suffix_tree.BuildSuffixTreeFromFile (argv[1]);
+        suffix_tree.DumpCommonStringsToFile (argv[2]);
 #ifndef NDEBUG
         suffix_tree.DumpSuffixTreeToDotFile ("gtree.dot");
 #endif

@@ -1,3 +1,15 @@
+/*
+ * Class GeneralizedSuffixTree - finding longest common substrings in array of strings
+ * Consists of 2 parts:
+ * 1. Building generalized suffix tree using Ukkonen's algorithm
+ *    Identifiers that obtained by MakeLetter() are used as separating symbols
+ *    All nodes and leafs are stored in continuous memory (memory is allocated by AllocNode and AllocLeaf)
+ * 2. Finding deepest (in terms of string length) node in the tree that have d different leaves in its subtree,
+ *    where d - number of strings that contain this substring using Lucas Chi Kwong Hui's algorithm
+ *    References: Dan Gusfield "Algorithms on Strings, Trees and Sequences", 7.6;
+ *    Finding of lowest common ancestors between pairs of leaves with same string_number id that enters in
+ *    the current node's subtree is implemented by Tarjan's algorithm
+ */
 #include <ctime>
 #include <cstdio>
 #include <cstdlib>
@@ -34,7 +46,7 @@ void GeneralizedSuffixTree::BuildSuffixTreeFromFile (std::string filename)
     while (fgets (strbuf, 1024, file))
     {
         uint len = strlen (strbuf);
-        if (len > 1)
+        if (len > 0)
         {
             strbuf[len - 1] = '\0';
             strings.push_back (strbuf);
@@ -44,8 +56,16 @@ void GeneralizedSuffixTree::BuildSuffixTreeFromFile (std::string filename)
     fclose (file);
     printf ("\r\rStrings were loaded successfully\n");
     // allocate space for nodes and leaves
-    nodes = static_cast<char *> (malloc (symbols_num * sizeof (Node)));
-    leaves = static_cast<char *> (malloc (symbols_num * sizeof (Leaf)));
+	if (symbols_num)
+	{
+		nodes = static_cast<char *> (malloc (symbols_num * sizeof (Node)));
+		leaves = static_cast<char *> (malloc (symbols_num * sizeof (Leaf)));
+	}
+    else
+	{
+		nodes = static_cast<char *> (malloc (sizeof (Node)));
+		leaves = static_cast<char *> (malloc (sizeof (Leaf)));
+	}
     // build tree
     root = AllocNode (nullptr, nullptr);
     root->suffix_link = root;
@@ -191,7 +211,19 @@ Node *GeneralizedSuffixTree::AllocNode (Node *parent, Node *suffix_link)
 
 Leaf *GeneralizedSuffixTree::AllocLeaf (Node *parent, uint string_number)
 {
-    return new (leaves + (leaves_num++) * sizeof (Leaf)) Leaf (parent, string_number);
+    assert (string_number < strings.size());
+	return new (leaves + (leaves_num++) * sizeof (Leaf)) Leaf (parent, string_number);
+}
+
+void GeneralizedSuffixTree::IncActiveLength()
+{
+	++active_length;
+	Edge &edge = active_node->edges[active_edge];
+	if (edge.length && active_length == edge.length)
+	{
+		active_node = edge.node;
+		active_length = 0;
+	}
 }
 
 bool GeneralizedSuffixTree::AddSymbol (char symbol)
@@ -204,13 +236,7 @@ bool GeneralizedSuffixTree::AddSymbol (char symbol)
         Edge &edge = active_node->edges[active_edge];
         if (strings[edge.string_number][edge.start + active_length] == symbol)
         {
-            ++active_length;
-            Edge &edge = active_node->edges[active_edge];
-            if (edge.length && active_length == edge.length)
-            {
-                active_node = edge.node;
-                active_length = 0;
-            }
+            IncActiveLength();
             return true;
         }
         else
@@ -222,13 +248,7 @@ bool GeneralizedSuffixTree::AddSymbol (char symbol)
         if (active_node->edges.count (static_cast<uint> (symbol)))
         {
             active_edge = static_cast<uint> (symbol);
-            ++active_length;
-            Edge &edge = active_node->edges[active_edge];
-            if (edge.length && active_length == edge.length)
-            {
-                active_node = edge.node;
-                active_length = 0;
-            }
+            IncActiveLength();
             return true;
         }
         else
@@ -238,7 +258,8 @@ bool GeneralizedSuffixTree::AddSymbol (char symbol)
 
 void GeneralizedSuffixTree::Move (uint string, uint pos)
 {
-    for (;;)
+    assert (string < strings.size() && pos <= strings[string].size());
+	for (;;)
     {
         if (!active_length)
             break;

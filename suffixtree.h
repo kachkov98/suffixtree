@@ -76,6 +76,7 @@ public:
 private:
     Node *AllocNode (Node *parent, Node *suffix_link);
     Leaf *AllocLeaf (Node *parent, uint string_number);
+	void IncActiveLength ();
     bool AddSymbol (char symbol);
     void Move (uint string, uint pos);
     Leaf *InsertLeaf (uint letter, uint string, uint pos);
